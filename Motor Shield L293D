@@ -1,0 +1,180 @@
+#include <Servo.h>
+
+#include <AFMotor.h>
+
+
+//AF_DCMotor motor1(1);
+//AF_DCMotor motor2(2);
+AF_DCMotor motor3(3);
+AF_DCMotor motor4(4);
+int speed = 255;
+// Pinagem do senssor ultrassônico
+#define ECHO 2 // pino 2 echo do sensor
+#define TRIGGER 9 // pino 9 trigger do sensor (S do servo_2 do HW-130)
+// negativo no GND e positivo no janper do PWM da HW-130
+
+#define pinServo1 10 // define o pino 10 para o servo1 motor
+Servo servo1; // instancia o serov 1
+
+const float som = 34300.0; // Velocidade do som em cm/s
+const float limite = 40.0; // Limites de distância de 40 cm
+boolean Adiante = false;
+float dist;
+
+
+void setup()
+ {
+  Serial.begin(9600);
+  pinMode(ECHO, INPUT);
+	pinMode(TRIGGER, OUTPUT);
+  
+  motor3.setSpeed(0); // 0 a 255
+  motor4.setSpeed(0); // 0 a 255
+
+  servo1.attach(pinServo1);
+  servo1.write(90); // Ângulo inicial calibrado para frente
+  delay(500);
+  servo1.write(180); // esquerda
+  delay(500);
+  servo1.write(90); // centro
+  delay(500);
+  servo1.write(0); // direita
+  delay(500);
+  servo1.write(90); // centro
+  delay(500);
+  
+ }
+
+void loop()
+ {
+  // Inicializa o sensor ultrassônico
+  inicializarTrigger();
+  dist = calcularDistancia();
+  delay(50);
+
+  int dist_Direita  = 0;
+  int dist_Esquerda = 0;
+  int dist_Adiante =  0;
+
+if (dist <= limite)
+       {
+           Parar();
+           delay(100);
+           MoverAtras();
+           delay(200);
+           Parar();
+           dist_Direita  = VarrerDireita();
+           delay(400);
+           dist_Esquerda = VarrerEsquerda();
+           delay(400);
+    if (dist_Direita >= dist_Esquerda)
+           {
+               VirarDireita();
+               delay(400);
+               Parar();
+               delay(50);
+               dist = calcularDistancia();
+           }
+           else
+           {
+               VirarEsquerda();
+               delay(400);
+               Parar();
+               delay(50);
+               dist = calcularDistancia();
+           }
+    }
+       else
+       {
+           delay(20);
+           MoverAdiante();
+       }
+  
+    dist = calcularDistancia();
+     Serial.print("Distancia: ");
+     Serial.print(dist);
+     Serial.println(" cm");
+
+ }
+// *****************  Função usada para calcular a distância entre o som e o objeto **************
+float calcularDistancia(){
+  unsigned long time = pulseIn(ECHO, HIGH);
+  float dist = time * 0.000001 * som / 2.0;
+  return dist;
+}
+ // Função usada para inicializar o Trigger
+void inicializarTrigger(){
+  digitalWrite(TRIGGER, 0);
+  delayMicroseconds(10);
+  digitalWrite(TRIGGER, 1);
+  delayMicroseconds(10);
+  digitalWrite(TRIGGER, 0);
+}
+// varrer a direita
+int VarrerDireita()
+  {
+      servo1.write(145);
+      dist = calcularDistancia();
+      delay(100);
+      servo1.write(90);
+      return dist;
+  }
+// varrer a esquerda
+int VarrerEsquerda()
+  {
+      servo1.write(35);
+      dist = calcularDistancia();
+      delay(100);
+      servo1.write(90);
+      return dist;
+  }
+// Para os motores
+void Parar()
+  {
+      motor3.setSpeed(0); // VELOCIDADE PARA ZERO
+      motor4.setSpeed(0);
+      motor3.run(RELEASE); // PARA O MOTOR
+      motor4.run(RELEASE); // PARA O MOTOR
+  }
+// andar para frente
+void MoverAdiante()
+  {
+      if(!Adiante)
+      {
+          Adiante = true;
+ 
+          motor3.setSpeed(speed);
+          motor4.setSpeed(speed);
+          motor3.run(FORWARD); // SENTIDO HORÁRIO
+          motor4.run(FORWARD); // SENTIDO HORÁRIO
+ 
+      }
+  }
+// andar para tras
+void MoverAtras()
+  {
+      Adiante = false;
+ 
+      motor3.setSpeed(speed);
+      motor4.setSpeed(speed);
+      motor3.run(BACKWARD); // SENTIDO ANTI-HORÁRIO
+      motor4.run(BACKWARD); // SENTIDO ANTI-HORÁRIO
+  }
+// virar a direita
+void VirarDireita()
+  {
+      motor3.setSpeed(0); // motor da direita freia
+      motor4.setSpeed(speed);
+      motor3.run(RELEASE); // PARA
+      motor4.run(FORWARD); // SENTIDO HORÁRIO
+ 
+  }
+
+void VirarEsquerda()
+  {
+      motor4.setSpeed(0); // motor da esquerda freia
+      motor3.setSpeed(speed);
+      motor4.run(RELEASE); // PARA
+      motor3.run(FORWARD); // SENTIDO HORÁRIO
+ 
+  }
